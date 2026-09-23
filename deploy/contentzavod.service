@@ -1,0 +1,15 @@
+# Один тик демона: публикации по расписанию, фидбэк, производство по плану дня, уборка.
+# Установка: см. docs/SETUP.md, раздел «Автономный режим».
+[Unit]
+Description=Contentzavod — тик контент-завода
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/Contentzavod
+ExecStart=%h/Contentzavod/.venv/bin/factory daemon --once
+TimeoutStartSec=4h
+Nice=5
+# 4 ГБ VRAM и 16 ГБ ОЗУ: не даём процессу съесть машину целиком
+MemoryMax=13G

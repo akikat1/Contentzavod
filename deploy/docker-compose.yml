@@ -1,0 +1,50 @@
+# Вспомогательные сервисы завода. Запуск: docker compose -f deploy/docker-compose.yml --env-file .env up -d
+services:
+  # Локальный Telegram Bot API: файлы до 2 ГБ вместо 50 МБ у облачного
+  telegram-bot-api:
+    image: aiogram/telegram-bot-api:latest
+    restart: unless-stopped
+    environment:
+      TELEGRAM_API_ID: ${TELEGRAM_API_ID}
+      TELEGRAM_API_HASH: ${TELEGRAM_API_HASH}
+      TELEGRAM_LOCAL: "1"
+    ports: ["127.0.0.1:8081:8081"]
+    volumes: ["tg-bot-api:/var/lib/telegram-bot-api"]
+
+  # Postiz: X, LinkedIn, Pinterest, Threads, Reddit, Mastodon и ещё ~25 площадок одним сервисом.
+  # Площадки подключаются в UI (http://localhost:5000) один раз; id интеграций → config/local.yaml.
+  postiz:
+    image: ghcr.io/gitroomhq/postiz-app:latest
+    restart: unless-stopped
+    profiles: ["postiz"]
+    environment:
+      MAIN_URL: http://localhost:5000
+      FRONTEND_URL: http://localhost:5000
+      NEXT_PUBLIC_BACKEND_URL: http://localhost:5000/api
+      JWT_SECRET: ${POSTIZ_JWT_SECRET:-change-me-please}
+      DATABASE_URL: postgresql://postiz:postiz@postiz-db:5432/postiz
+      REDIS_URL: redis://postiz-redis:6379
+      BACKEND_INTERNAL_URL: http://localhost:3000
+      IS_GENERAL: "true"
+      STORAGE_PROVIDER: local
+      UPLOAD_DIRECTORY: /uploads
+      NEXT_PUBLIC_UPLOAD_DIRECTORY: /uploads
+    ports: ["127.0.0.1:5000:5000"]
+    volumes: ["postiz-uploads:/uploads", "postiz-config:/config"]
+    depends_on: [postiz-db, postiz-redis]
+  postiz-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    profiles: ["postiz"]
+    environment: {POSTGRES_USER: postiz, POSTGRES_PASSWORD: postiz, POSTGRES_DB: postiz}
+    volumes: ["postiz-db:/var/lib/postgresql/data"]
+  postiz-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    profiles: ["postiz"]
+
+volumes:
+  tg-bot-api:
+  postiz-uploads:
+  postiz-config:
+  postiz-db:
