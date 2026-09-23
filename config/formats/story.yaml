@@ -1,0 +1,17 @@
+id: story
+name: История
+description: "Сюжет с героями, конфликтом и репликами персонажей."
+title_styles: [story, question]
+skeleton:
+  - {act: cold_open,  tension: 0.9,  register: parallax, cue: impact, note: "кульминационный момент, вырванный из середины"}
+  - {act: promise,    tension: 0.5,  register: text,               note: "открыть петлю: как герой сюда попал"}
+  - {act: context,    tension: 0.35, register: archive,            note: "кто герой, чего он хочет"}
+  - {act: rising,     tension: 0.55, register: image,              note: "первое препятствие, диалог"}
+  - {act: twist,      tension: 0.85, register: stock, cue: impact, note: "поворот"}
+  - {act: rising,     tension: 0.5,  register: parallax,           note: "спад: герой решает, реплики"}
+  - {act: climax,     tension: 1.0,  register: archive, cue: silence_before, note: "решающий момент, закрыть петлю"}
+  - {act: resolution, tension: 0.45, register: image,              note: "чем закончилось"}
+  - {act: finale,     tension: 0.6,  register: text,               note: "callback к cold open"}
+guidance: |
+  Прямая речь персонажей — роль character со speaker. Нарратор связывает сцены.
+  Персонажей не больше трёх, у каждого узнаваемая манера речи.

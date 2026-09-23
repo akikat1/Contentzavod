@@ -1,0 +1,22 @@
+# окружение
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# секреты — никогда не коммитить
+config/keys.yaml
+config/local.yaml
+config/secrets/
+.env
+
+# рабочие данные конвейера
+workspace/
+data/
+assets/cache/
+assets/generated/
+assets/music/**/*.mp3
+assets/music/**/*.wav
+assets/rvc/

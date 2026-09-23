@@ -1,0 +1,15 @@
+id: comparison
+name: Сравнение
+description: "Две стороны, раунды, итог."
+title_styles: [question, number]
+skeleton:
+  - {act: cold_open, tension: 0.85, register: parallax, cue: impact, note: "неожиданный результат сравнения"}
+  - {act: promise,   tension: 0.5,  register: text,               note: "открыть петлю"}
+  - {act: context,   tension: 0.35, register: stock,              note: "кто против кого"}
+  - {act: rising,    tension: 0.55, register: diagram,            note: "раунд 1"}
+  - {act: rising,    tension: 0.7,  register: counter,            note: "раунд 2"}
+  - {act: twist,     tension: 0.45, register: image,              note: "спад: где сравнение нечестно"}
+  - {act: climax,    tension: 0.95, register: diagram, cue: silence_before, note: "итог, закрыть петлю"}
+  - {act: finale,    tension: 0.55, register: text,               note: "callback"}
+guidance: |
+  Каждый раунд — один критерий и одно число. Второй нарратор ведёт вторую сторону.

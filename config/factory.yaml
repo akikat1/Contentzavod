@@ -1,0 +1,342 @@
+# ============================================================================
+#  Контент-завод — основной конфиг (коммитится в git, секретов здесь нет)
+#  Локальные переопределения: config/local.yaml (gitignored)
+#  Из окружения: FACTORY__RENDER__WIDTH=1280  → render.width
+# ============================================================================
+
+channel:
+  name: "Контент-завод"
+  language: ru                 # ru | en — выбирает config/voices/<lang>.yaml
+  series: main                 # серия: голоса стабильны внутри серии, ротируются между сериями
+  niche_file: config/niches/example.yaml
+  ai_disclosure: "Ролик создан с использованием ИИ: сценарий, озвучка и часть изображений сгенерированы. Факты — по источникам в описании."
+
+paths:
+  workspace: workspace
+  db: data/factory.db
+  assets: assets
+  cache: assets/cache
+  gpu_lock: data/gpu.lock
+  logs: data/logs
+
+runtime:
+  offline: false               # true → фикстурный LLM, espeak-ng, процедурные картинки и музыка
+  dry_run: false               # true → публикация в песочницу вместо площадок
+  log_level: INFO
+
+# ---------------------------------------------------------------------------
+#  Пул ключей: ~15 аккаунтов × (Gemini, Groq, OpenRouter)
+#  Сами ключи — в config/keys.yaml (gitignored) или FACTORY_KEYS_<PROVIDER>=k1,k2
+#  Лимиты — данные, а не комментарии: `factory keys probe` сверяет их с реальностью.
+#  Имена моделей меняются — если probe пишет 404 model not found, поправьте здесь.
+# ---------------------------------------------------------------------------
+llm:
+  keys_file: config/keys.yaml
+  max_attempts_per_call: 12          # сколько разных ключей перебрать на один вызов
+  validation_retries: 3              # сколько раз вернуть модели ошибку схемы
+  wait_for_cooldown_s: 90            # подождать освобождения ключа, прежде чем падать на офлайн-дно
+  offline_fallback: llamacpp         # llamacpp | none — дно, когда все облака недоступны
+  providers:
+    gemini:
+      kind: gemini
+      base_url: https://generativelanguage.googleapis.com/v1beta
+      day_reset_tz: America/Los_Angeles
+      limits: {rpm: 10, rpd: 250, tpd: 1000000, ipd: 500}
+      models:
+        research: gemini-2.5-flash
+        beatsheet: gemini-2.5-flash
+        script: gemini-2.5-flash
+        metadata: gemini-2.5-flash-lite
+        judge: gemini-2.5-flash-lite
+        image: gemini-2.5-flash-image
+        embed: gemini-embedding-001
+    groq:
+      kind: openai_compat
+      base_url: https://api.groq.com/openai/v1
+      day_reset_tz: UTC
+      limits: {rpm: 30, rpd: 1000, tpd: 200000}
+      models:
+        research: openai/gpt-oss-120b
+        beatsheet: openai/gpt-oss-120b
+        script: openai/gpt-oss-120b
+        metadata: llama-3.3-70b-versatile
+        judge: llama-3.3-70b-versatile
+    openrouter:
+      kind: openai_compat
+      base_url: https://openrouter.ai/api/v1
+      day_reset_tz: UTC
+      limits: {rpm: 20, rpd: 50}
+      models:
+        beatsheet: meta-llama/llama-3.3-70b-instruct:free
+        script: meta-llama/llama-3.3-70b-instruct:free
+        metadata: meta-llama/llama-3.3-70b-instruct:free
+        judge: meta-llama/llama-3.3-70b-instruct:free
+  task_preference:
+    research:  [gemini, groq, openrouter]     # большой контекст → Gemini первым
+    beatsheet: [gemini, groq, openrouter]
+    script:    [gemini, groq, openrouter]
+    metadata:  [groq, gemini, openrouter]     # дёшево и быстро
+    judge:     [groq, openrouter, gemini]
+    image:     [gemini]
+    embed:     [gemini]
+  llamacpp:
+    base_url: http://127.0.0.1:8080/v1        # llama-server -m qwen3-4b-instruct-q4_k_m.gguf -c 16384
+    model: qwen3-4b-instruct
+    timeout_s: 900
+
+# ---------------------------------------------------------------------------
+#  Engagement Engine
+# ---------------------------------------------------------------------------
+formats:
+  dir: config/formats
+  min_gap: 3                   # формат не повторяется чаще, чем раз в N выпусков
+  weights: {explainer: 1.0, investigation: 1.2, listicle: 1.0, story: 1.2, myth_vs_fact: 1.0,
+            timeline: 0.8, comparison: 0.9, case_study: 0.9}
+
+beatsheet:
+  target_duration_s: 420       # 7 минут
+  duration_tolerance: 0.2
+  min_beats: 7
+  cold_open_max_s: 10
+  open_loop_max_start_s: 45
+  open_loop_close_min_frac: 0.66
+  max_beat_s: 40               # без смены регистра подачи не дольше 40 с
+  min_peaks: 2
+  peak_prominence: 0.15
+
+voice:
+  library_dir: config/voices
+  est_chars_per_second: 14.5   # для оценки длительности до синтеза
+  humanize: basic              # off | basic | rvc
+  min_role_duration_s: 12      # нарраторская роль короче — схлопывается в main_narrator
+  max_switches_per_minute: 2   # смен нарратора в минуту
+  secondary_max_consecutive_blocks: 2
+  min_direct_speech_s: 1.5     # реплика персонажа/цитата короче — читается нарратором
+  max_direct_speech_s: 25
+  max_quotes_per_minute: 2     # для не-cast стратегий
+  max_characters: 3
+  strategies:
+    explainer: {simple: single, with_quotes: single_plus_quote, simple_max_blocks: 6}
+    timeline: single_plus_quote
+    investigation: dual_narrator
+    listicle: dual_narrator
+    comparison: dual_narrator
+    myth_vs_fact: dual_opposing
+    story: cast
+    case_study: cast
+  roles_by_strategy:
+    single: [main_narrator]
+    single_plus_quote: [main_narrator, quote]
+    dual_narrator: [main_narrator, secondary_narrator, quote]
+    dual_opposing: [main_narrator, secondary_narrator, quote]
+    cast: [main_narrator, character, quote]
+  engines_fallback: [edge, piper, espeak]      # если движок голоса недоступен
+  sentence_jitter: {rate_pct: 4, pitch_st: 2}  # слой 2: пофразная вариация
+  pauses_ms: {phrase: [120, 300], paragraph: [400, 700], block: [500, 800], dramatic: [600, 900]}
+  breath: {enabled: true, min_words: 12, after_pause_ms: 350, probability: 0.55, gain_db: [-30, -24]}
+  post_chain: "highpass=f=80,deesser=i=0.35,equalizer=f=3000:t=o:w=1:g=2.5,acompressor=threshold=-18dB:ratio=3:attack=5:release=120"
+  room_ir: {enabled: true, wet: 0.08, file: assets/generated/ir/room_small.wav}
+  voice_lufs: -16
+  rvc:
+    command: "rvc-python cli -i {input} -o {output} -mp {model} -de cuda:0"   # pip install rvc-python
+    model: assets/rvc/channel_voice.pth
+    chunk_s: 30
+    roles: [main_narrator, secondary_narrator]
+
+align:
+  engine: auto                 # auto: слова от TTS → faster-whisper → пропорционально
+  whisper_model: small
+  whisper_compute_type: int8
+
+subtitles:
+  font: DejaVu Sans
+  master_burn: false           # для длинного видео — отдельные субтитры (SRT) на площадку
+  shorts_burn: true            # для шортсов — вшитые karaoke
+  max_words_per_line: 5
+  emph_color: "&H0000D7FF"     # ASS &HAABBGGRR: золотой акцент для слов из [emph] (как счётчики и обложка)
+  active_color: "&H0050FF50"   # karaoke: слово, которое звучит сейчас (зелёный)
+  base_color: "&H00FFFFFF"
+  outline: 4
+
+# ---------------------------------------------------------------------------
+#  Видеоряд
+# ---------------------------------------------------------------------------
+visual:
+  shot_s: {calm: 7.0, tense: 2.5, climax: 9.0, list_item: 2.2, cold_open: 2.4, min: 1.4}
+  register_markers:            # какой маркер обслуживает регистр по умолчанию
+    stock: STOCK
+    archive: IMAGE
+    image: IMAGE
+    parallax: PARALLAX
+    motion_graphics: COUNTER
+    text: TEXT
+    map: IMAGE
+    diagram: CHART
+    counter: COUNTER
+  zoom_punch: {scale: 1.08, dur_s: 0.3}
+  counters_on_emph_numbers: true
+  match_cut: true
+  fade_in_on_block_s: 0.15
+  image_providers: [gemini, pollinations, comfyui, procedural]
+  stock_providers: [pexels, pixabay]
+  pexels: {key_env: PEXELS_API_KEY, per_page: 12}
+  pixabay: {key_env: PIXABAY_API_KEY, per_page: 12}
+  pollinations: {base_url: https://image.pollinations.ai/prompt, model: flux}
+  comfyui: {base_url: http://127.0.0.1:8188, workflow: config/comfyui_sdxl_turbo.json}
+  parallax: {depth: auto, layers: 3, travel: 0.06}   # depth: auto|midas|heuristic
+  image_style_suffix: "cinematic, documentary photo, natural light, high detail, no text, no watermark"
+
+sound:
+  music_dir: assets/music      # assets/music/<mood>/*.mp3 — скачать один раз (Pixabay Music без API)
+  music_gain_db: -22           # уровень музыки в паузах (RMS dBFS); под голосом + duck_db
+  duck_db_default: -14
+  duck_attack_s: 0.08
+  duck_release_s: 0.35
+  crossfade_s: 1.5
+  sfx_dir: assets/generated/sfx
+  sfx_gain_db: {whoosh: -20, impact: -14, riser: -18, ambience: -34}
+  whoosh_on_act_change: true
+  riser_before_climax_s: 1.6
+  final_lufs: -14
+  final_true_peak: -1.5
+
+render:
+  width: 1920
+  height: 1080
+  fps: 30
+  encoder: auto                # auto | nvenc | x264
+  quality: normal              # draft | normal | high
+  parallel_scenes: 2           # 16 ГБ ОЗУ — больше двух ffmpeg одновременно не надо
+  audio_bitrate: 192k
+
+shorts:
+  enabled: true
+  max_count: 4
+  min_s: 15
+  max_s: 58
+  width: 1080
+  height: 1920
+  hook_card_s: 1.6
+  outro_card_s: 2.0
+  outro_text: "Полная версия — на канале"
+  safe_bottom_frac: 0.22       # интерфейс TikTok/Reels перекрывает низ кадра
+
+# ---------------------------------------------------------------------------
+#  QA-гейт — 8 проверок, авто-ремонт до 3 циклов, затем карантин
+# ---------------------------------------------------------------------------
+qa:
+  max_cycles: 3
+  black_max_s: 1.5
+  silence_max_s: 2.0
+  silence_db: -50
+  lufs_target: -14
+  lufs_tolerance: 1.0
+  duration_tolerance: 0.25
+  sync_tolerance_s: 0.15
+  dedup_threshold: 0.55        # похожесть сценария на прошлые выпуски
+  antitemplate_register_similarity: 0.8
+  dramaturgy_tolerance: 0.15   # допуск драматургии по реальной озвучке (план проверяется строго)
+  stop_words_file: config/stop_words.txt
+  nsfw: {required: false, sample_every_s: 10}
+  factcheck_llm_judge: true
+
+# ---------------------------------------------------------------------------
+#  Публикация
+# ---------------------------------------------------------------------------
+publish:
+  shorts_stagger_hours: 3
+  remote_storage:              # Cloudflare R2 (S3 API) — для площадок, которые тянут видео по URL
+    enabled: false
+    endpoint_env: R2_ENDPOINT
+    bucket: contentzavod
+    access_key_env: R2_ACCESS_KEY_ID
+    secret_key_env: R2_SECRET_ACCESS_KEY
+    public_base_url: ""        # https://pub-xxxx.r2.dev
+  platforms:
+    youtube:
+      enabled: false
+      variants: [master, shorts]
+      privacy: private         # private | unlisted | public — начинайте с private
+      category_id: "27"        # Education
+      daily_limit: 100         # с 01.06.2026 отдельный бакет videos.insert
+      client_id_env: YT_CLIENT_ID
+      client_secret_env: YT_CLIENT_SECRET
+      refresh_token_env: YT_REFRESH_TOKEN
+      upload_captions: true
+    telegram:
+      enabled: false
+      variants: [master]
+      bot_api_url: http://127.0.0.1:8081   # локальный telegram-bot-api (2 ГБ); облачный режет на 50 МБ
+      token_env: TG_BOT_TOKEN
+      chat_id_env: TG_CHANNEL_ID
+      daily_limit: 20
+    bluesky:
+      enabled: false
+      variants: [master]
+      handle_env: BSKY_HANDLE
+      app_password_env: BSKY_APP_PASSWORD
+      max_video_s: 600
+      max_video_mb: 300
+      daily_limit: 10
+    vk:
+      enabled: false
+      variants: [master]
+      token_env: VK_TOKEN
+      group_id_env: VK_GROUP_ID
+      api_version: "5.199"
+      daily_limit: 20
+    rutube:
+      enabled: false
+      variants: [master]
+      token_env: RUTUBE_TOKEN
+      category_id: 13
+      needs_public_url: true
+      daily_limit: 20
+    tiktok:
+      enabled: false           # включить после аудита приложения
+      variants: [shorts]
+      access_token_env: TIKTOK_ACCESS_TOKEN
+      privacy: SELF_ONLY       # до аудита TikTok всё равно принудительно private
+      daily_limit: 10
+    instagram:
+      enabled: false           # после Meta app review
+      variants: [shorts]
+      ig_user_id_env: IG_USER_ID
+      access_token_env: META_ACCESS_TOKEN
+      graph_version: v21.0
+      needs_public_url: true
+      daily_limit: 25
+    facebook:
+      enabled: false
+      variants: [shorts]
+      page_id_env: FB_PAGE_ID
+      access_token_env: META_PAGE_TOKEN
+      graph_version: v21.0
+      needs_public_url: true
+      daily_limit: 25
+    postiz:                    # X, LinkedIn, Pinterest, Threads, Reddit, Mastodon... одним контейнером
+      enabled: false
+      variants: [shorts]
+      base_url: http://127.0.0.1:5000/public/v1
+      api_key_env: POSTIZ_API_KEY
+      integrations: []         # id интеграций из Postiz UI
+      daily_limit: 20
+
+alerts:
+  telegram:
+    enabled: false
+    token_env: TG_BOT_TOKEN
+    chat_id_env: TG_ADMIN_CHAT_ID
+    api_url: https://api.telegram.org
+
+schedule:
+  videos_per_day: 2
+  keep_jobs: 20                # глубина истории на диске
+  cleanup_after_publish: true
+  feedback_after_hours: 48
+  min_free_disk_gb: 40
+
+trends:
+  sources: [niche, wikipedia_onthisday, google_trends_rss]
+  google_trends_geo: RU
+  candidates: 12

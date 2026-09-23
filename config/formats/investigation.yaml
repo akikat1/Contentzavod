@@ -1,0 +1,18 @@
+id: investigation
+name: Расследование
+description: "Реконструкция событий с версиями, уликами и развязкой."
+title_styles: [question, contrarian]
+skeleton:
+  - {act: cold_open,  tension: 0.9,  register: archive,  cue: impact, note: "момент происшествия, без контекста"}
+  - {act: promise,    tension: 0.55, register: text,                note: "открыть петлю: главный вопрос расследования"}
+  - {act: context,    tension: 0.35, register: map,                 note: "где и когда, действующие лица"}
+  - {act: rising,     tension: 0.55, register: stock,               note: "первая версия и её улики"}
+  - {act: twist,      tension: 0.8,  register: counter, cue: impact, note: "улика, которая рушит первую версию"}
+  - {act: rising,     tension: 0.5,  register: archive,             note: "спад: вторая версия, свидетельства, цитата"}
+  - {act: reveal,     tension: 0.85, register: diagram, cue: riser, note: "что показала экспертиза / документы"}
+  - {act: climax,     tension: 1.0,  register: parallax, cue: silence_before, note: "развязка — закрыть петлю"}
+  - {act: resolution, tension: 0.45, register: stock,               note: "последствия"}
+  - {act: finale,     tension: 0.6,  register: text,                note: "callback к cold open"}
+guidance: |
+  Держать интригу: версии подаются как равноправные, пока улики не решат.
+  Каждое утверждение — со ссылкой на источник. Цитаты очевидцев — роль quote.
