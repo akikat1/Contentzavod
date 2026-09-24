@@ -6,10 +6,10 @@
 | Telegram | мастер | локальный Bot API (2 ГБ) | BotFather, api_id/api_hash | облачный Bot API — 50 МБ | `publish/telegram.py` |
 | Bluesky | мастер (> 10 мин → шортс) | `app.bsky.video.uploadVideo` | app password | 10 мин / 300 МБ, суточный лимит видео | `publish/bluesky.py` |
 | VK Видео | мастер | `video.save` + загрузка | пользовательский токен ✋ | лимиты API VK → перенос на час | `publish/vk.py` |
-| Rutube | мастер | загрузка по ссылке | токен ✋, буфер R2 | — | `publish/rutube.py` |
+| Rutube | мастер | загрузка по ссылке (временный туннель) | токен ✋ | — | `publish/rutube.py` |
 | TikTok | шортсы | Content Posting API (Direct Post) | аудит приложения ✋ 2–4 нед | до аудита — только private; 6 запросов/мин на токен | `publish/tiktok.py` |
-| Instagram | шортсы (Reels) | Graph API: контейнер → публикация | Meta App Review ✋ 2–4 нед, R2 | 25 публикаций/24 ч; 9:16, 5–90 с | `publish/meta.py` |
-| Facebook | шортсы (Reels) | Graph API `video_reels` | App Review ✋, R2 | лимиты Graph API | `publish/meta.py` |
+| Instagram | шортсы (Reels) | Graph API: контейнер → публикация по ссылке (туннель) | Meta App Review ✋ 2–4 нед | 25 публикаций/24 ч; 9:16, 5–90 с | `publish/meta.py` |
+| Facebook | шортсы (Reels) | Graph API `video_reels` по ссылке (туннель) | App Review ✋ | лимиты Graph API | `publish/meta.py` |
 | X, LinkedIn, Pinterest, Threads, Reddit, Mastodon, … | шортсы | Postiz (self-hosted, AGPL-3.0) | подключить в UI Postiz | по площадке | `publish/postiz.py` |
 | Дзен | — | публичного API нет | — | — | не реализован |
 

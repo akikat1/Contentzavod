@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -138,7 +139,9 @@ class DB:
     def __init__(self, path: Path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(self.path, timeout=30, isolation_level=None)
+        # одно соединение на процесс, доступ из нескольких потоков (мастер настройки, рендер) — под блокировкой
+        self._lock = threading.RLock()
+        self._conn = sqlite3.connect(self.path, timeout=30, isolation_level=None, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA busy_timeout=30000")
@@ -151,22 +154,26 @@ class DB:
     def tx(self) -> Iterator[sqlite3.Connection]:
         """BEGIN IMMEDIATE — берём блокировку записи сразу, чтобы два процесса
         не выдали один и тот же ключ из пула одновременно."""
-        self._conn.execute("BEGIN IMMEDIATE")
-        try:
-            yield self._conn
-            self._conn.execute("COMMIT")
-        except BaseException:
-            self._conn.execute("ROLLBACK")
-            raise
+        with self._lock:
+            self._conn.execute("BEGIN IMMEDIATE")
+            try:
+                yield self._conn
+                self._conn.execute("COMMIT")
+            except BaseException:
+                self._conn.execute("ROLLBACK")
+                raise
 
     def execute(self, sql: str, params: tuple | dict = ()) -> sqlite3.Cursor:
-        return self._conn.execute(sql, params)
+        with self._lock:
+            return self._conn.execute(sql, params)
 
     def one(self, sql: str, params: tuple | dict = ()) -> sqlite3.Row | None:
-        return self._conn.execute(sql, params).fetchone()
+        with self._lock:
+            return self._conn.execute(sql, params).fetchone()
 
     def all(self, sql: str, params: tuple | dict = ()) -> list[sqlite3.Row]:
-        return self._conn.execute(sql, params).fetchall()
+        with self._lock:
+            return self._conn.execute(sql, params).fetchall()
 
     # ---- kv ----
     def kv_get(self, k: str, default: Any = None) -> Any:

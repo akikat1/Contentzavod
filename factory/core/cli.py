@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import shutil
 import sys
 import time
@@ -101,6 +102,13 @@ def cmd_keys(args) -> int:
     pool = _pool(cfg, db)
     if args.action == "probe":
         return _probe(cfg, pool)
+    if args.action == "models":
+        from .verify import list_models  # noqa: PLC0415
+        for prov, names in list_models(cfg, pool).items():
+            print(f"\n{prov} ({len(names)}):")
+            for n in names:
+                print(f"  {n}")
+        return 0
     rows = pool.status()
     if not rows:
         print("Пул пуст. Заполните config/keys.yaml или FACTORY_KEYS_<PROVIDER>=k1,k2")
@@ -118,36 +126,17 @@ def cmd_keys(args) -> int:
 
 
 def _probe(cfg, pool) -> int:
-    from ..providers.llm.base import AuthError, BadRequest, LLMError, Message, RateLimited  # noqa: PLC0415
-    from ..providers.llm.router import LLMRouter  # noqa: PLC0415
-    router = LLMRouter(cfg, pool)
-    ok = 0
-    for key in pool.keys.values():
-        task = next((t for t in ("metadata", "judge", "script") if pool.model_for(key.provider, t)), None)
-        if not task:
-            continue
-        model = pool.model_for(key.provider, task)
-        t0 = time.time()
-        try:
-            res = router._client(key.provider).complete(system="", messages=[Message("user", "Ответь одним словом: ок")],
-                                                        model=model, api_key=key.secret, json_mode=False,
-                                                        max_tokens=16, temperature=0)
-            pool._report(key, "ok", tokens=res.tokens)
-            print(f"✔ {key.key_id:40} {model:40} {time.time() - t0:5.1f} с")
-            ok += 1
-        except RateLimited as e:
-            pool._report(key, "rate_limited", retry_after=e.retry_after, daily=e.daily, message=str(e))
-            print(f"⏳ {key.key_id:40} {model:40} лимит: {str(e)[:80]}")
-        except AuthError as e:
-            pool._report(key, "auth", message=str(e))
-            print(f"✘ {key.key_id:40} ключ недействителен: {str(e)[:80]}")
-        except BadRequest as e:
-            print(f"? {key.key_id:40} модель {model} отвергнута — поправьте llm.providers.{key.provider}.models: "
-                  f"{str(e)[:100]}")
-        except LLMError as e:
-            pool._report(key, "error", message=str(e))
-            print(f"✘ {key.key_id:40} {str(e)[:100]}")
-    print(f"\nРабочих ключей: {ok} из {len(pool.keys)}")
+    from .verify import probe_keys  # noqa: PLC0415
+    icons = {"ok": "✔", "rate_limited": "⏳", "auth": "✘", "bad_model": "?", "error": "✘", "skipped": "·"}
+    results = probe_keys(cfg, pool)
+    for r in results:
+        extra = f"{r.seconds:5.1f} с" if r.status == "ok" else r.message
+        print(f"{icons[r.status]} {r.key_id:40} {r.model:40} {extra}")
+    if any(r.status == "bad_model" for r in results):
+        print("\nЕсть отвергнутые модели: `factory keys models` покажет актуальные имена, "
+              "впишите их в config/local.yaml → llm.providers.<провайдер>.models")
+    ok = sum(1 for r in results if r.status == "ok")
+    print(f"\nРабочих ключей: {ok} из {len(results)}")
     return 0 if ok else 1
 
 
@@ -341,10 +330,87 @@ def cmd_daemon(args) -> int:
 
 
 def cmd_auth(args) -> int:
+    cfg, db = _ctx(args)
     from . import auth  # noqa: PLC0415
+    from .envfile import env_path, set_env  # noqa: PLC0415
     if args.platform == "youtube":
         tok = auth.youtube(port=args.port)
-        print(f"\nДобавьте в .env:\nYT_REFRESH_TOKEN={tok}")
+        set_env(env_path(cfg.root), {cfg.get("publish.platforms.youtube.refresh_token_env", "YT_REFRESH_TOKEN"): tok})
+        print("✔ Refresh token сохранён в .env")
+        return 0
+    from .telegram_setup import fetch_updates, parse_updates, switch_to_local  # noqa: PLC0415
+    token = os.environ.get(cfg.get("publish.platforms.telegram.token_env", "TG_BOT_TOKEN"), "")
+    if not token:
+        print("✘ Нет TG_BOT_TOKEN — сначала мастер настройки, секция Telegram")
+        return 1
+    if args.platform == "telegram-local":
+        print(switch_to_local(cfg, token))
+        return 0
+    updates, where = fetch_updates(cfg, token)
+    channels, privates = parse_updates(updates)
+    print(f"Через {where}: каналов {len(channels)}, личных чатов с /start {len(privates)}")
+    for c in channels:
+        print(f"  канал {c['id']}  {c['title']}  @{c.get('username') or '—'}")
+    for p in privates:
+        print(f"  чат   {p['id']}  {p['name']}")
+    upd = {}
+    if len(channels) == 1:
+        upd[cfg.get("publish.platforms.telegram.chat_id_env", "TG_CHANNEL_ID")] = str(channels[0]["id"])
+    if len(privates) == 1:
+        upd[cfg.get("alerts.telegram.chat_id_env", "TG_ADMIN_CHAT_ID")] = str(privates[0]["id"])
+        from .config import set_local  # noqa: PLC0415
+        set_local(cfg, "alerts.telegram.enabled", True)
+    set_env(env_path(cfg.root), upd)
+    if upd:
+        print(f"✔ Сохранено в .env: {', '.join(upd)}")
+    if not channels:
+        print("✋ Бот не видит канал: добавьте его администратором и напишите в канал любое сообщение")
+    if not privates:
+        print("✋ Напишите боту /start в личку — туда будут приходить алерты")
+    return 0 if channels else 1
+
+
+def cmd_setup(args) -> int:
+    cfg, db = _ctx(args)
+    if args.action == "check":
+        from .setup_check import render, run_checks, summary, to_json  # noqa: PLC0415
+        items = run_checks(cfg, db, probe=args.probe)
+        print(json.dumps(to_json(items), ensure_ascii=False, indent=1) if args.json else render(items))
+        return 0 if summary(items)["ready"] else 4
+    if args.action == "verify":
+        from .requirements import sections  # noqa: PLC0415
+        from .verify import CHECKS, check_section  # noqa: PLC0415
+        bad = 0
+        for sec in sections():
+            if sec.id not in CHECKS or (args.section and sec.id != args.section):
+                continue
+            ok, msg = check_section(cfg, sec.id)
+            bad += not ok
+            print(f"{'✔' if ok else '✘'} {sec.title:55} {msg}")
+        return 1 if bad else 0
+    from .wizard import serve  # noqa: PLC0415
+    serve(cfg, db, port=args.port, open_browser=args.open, timeout_s=args.timeout)
+    return 0
+
+
+def cmd_env(args) -> int:
+    cfg, _ = _ctx(args)
+    from .envfile import env_path, mask, read_env, set_env  # noqa: PLC0415
+    path = env_path(cfg.root)
+    if args.action == "set":
+        import getpass  # noqa: PLC0415
+        value = getpass.getpass(f"{args.key} (ввод скрыт): ") if sys.stdin.isatty() else sys.stdin.readline()
+        set_env(path, {args.key: value.strip()})
+        print(f"{args.key} сохранён в {path}")
+        return 0
+    from .requirements import sections  # noqa: PLC0415
+    env = read_env(path)
+    for sec in sections():
+        for v in sec.vars:
+            name = v.name(cfg)
+            val = env.get(name) or os.environ.get(name, "")
+            shown = (val if not v.secret else mask(val)) if val else "—"
+            print(f"{sec.id:10} {name:24} {shown}")
     return 0
 
 
@@ -382,8 +448,8 @@ def main(argv: list[str] | None = None) -> int:
 
     add("init", cmd_init, "создать БД, процедурные ассеты и заготовку keys.yaml")
     add("doctor", cmd_doctor, "проверить окружение: ffmpeg, NVENC, TTS, GPU, диск, ключи")
-    sp = add("keys", cmd_keys, "пул ключей: status | probe | import")
-    sp.add_argument("action", choices=["status", "probe", "import"])
+    sp = add("keys", cmd_keys, "пул ключей: status | probe | models | import")
+    sp.add_argument("action", choices=["status", "probe", "models", "import"])
     sp.add_argument("--provider")
     sp.add_argument("--file")
     sp.add_argument("--account-prefix", default="acc")
@@ -432,9 +498,20 @@ def main(argv: list[str] | None = None) -> int:
     sp.add_argument("--interval", default="900")
     sp.add_argument("--offline", action="store_true")
     sp.add_argument("--dry-run", action="store_true")
-    sp = add("auth", cmd_auth, "разовая авторизация площадки (получить refresh token)")
-    sp.add_argument("platform", choices=["youtube"])
+    sp = add("auth", cmd_auth, "youtube — OAuth; telegram — найти канал; telegram-local — перевести бота на локальный сервер")
+    sp.add_argument("platform", choices=["youtube", "telegram", "telegram-local"])
     sp.add_argument("--port", type=int, default=8765)
+    sp = add("setup", cmd_setup, "check — что готово и что осталось; wizard — мастер в браузере; verify — живая проверка секретов")
+    sp.add_argument("action", choices=["check", "wizard", "verify"])
+    sp.add_argument("section", nargs="?", help="verify: только эта секция (stock, youtube, telegram, …)")
+    sp.add_argument("--json", action="store_true", help="check: вывод для агента")
+    sp.add_argument("--probe", action="store_true", help="check: проверить ключи живым вызовом")
+    sp.add_argument("--port", type=int, default=8770, help="wizard: порт")
+    sp.add_argument("--open", action="store_true", help="wizard: открыть в браузере (в WSL — в браузере Windows)")
+    sp.add_argument("--timeout", type=float, default=4 * 3600, help="wizard: остановиться через N секунд")
+    sp = add("env", cmd_env, "секреты в .env: check (маскированно) | set KEY (скрытый ввод)")
+    sp.add_argument("action", choices=["check", "set"])
+    sp.add_argument("key", nargs="?")
     add("cleanup", cmd_cleanup, "удалить промежуточные файлы опубликованных джобов")
     sp = add("jobs", cmd_jobs, "список джобов")
     sp.add_argument("--limit", type=int, default=20)

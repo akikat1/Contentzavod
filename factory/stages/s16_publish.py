@@ -21,7 +21,7 @@ from ..core.workspace import JobDir
 from ..providers.publish.alerts import send_alert
 from ..providers.publish.base import Deferred, PostMeta, PublishError, Video
 from ..providers.publish.registry import enabled_platforms, get_publisher
-from ..providers.publish.storage import upload_public
+from ..providers.publish.storage import public_url
 
 OUTPUTS = ["out/publish_plan.json"]
 log = logging.getLogger("factory.publish")
@@ -121,8 +121,16 @@ def _publish_one(cfg: Config, db: DB, job: JobDir, name: str, variant: str, sand
     attempts = db.one("SELECT attempts FROM publications WHERE job_id=? AND platform=? AND variant=?", key)["attempts"]
     try:
         if pub.needs_public_url and not sandbox:
-            video.public_url = upload_public(cfg, path, f"{job.job_id}/{variant}.mp4")
-        res = pub.publish(video, meta)
+            with public_url(cfg, path, f"{job.job_id}/{variant}.mp4") as link:
+                video.public_url = link.url
+                res = pub.publish(video, meta)
+                # Rutube и Facebook скачивают файл асинхронно — держим ссылку, пока не заберут целиком
+                wait = float(cfg.get("publish.remote_storage.fetch_timeout_s", 1200)) \
+                    if name in ("rutube", "facebook") else 0
+                if not link.wait_fetched(wait):
+                    log.warning("%s не скачал файл за %.0f с — статус проверьте в кабинете площадки", name, wait)
+        else:
+            res = pub.publish(video, meta)
     except Deferred as e:
         db.execute("UPDATE publications SET status='deferred', scheduled_at=?, attempts=attempts+1, last_error=?, "
                    "updated_at=? WHERE job_id=? AND platform=? AND variant=?", (e.retry_at, str(e)[:500], now(), *key))

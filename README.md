@@ -29,7 +29,14 @@ QA-гейт → публикация → статистика удержания
 - **QA-гейт вместо человека**: техника, синхрон, факты, безопасность, дубли, антишаблон, драматургия, голоса.
   Провал → ремонт с нужной стадии с конкретным фидбэком → после 3 циклов или «ремонт не дал эффекта» — карантин и алерт.
 
-## Быстрый старт
+## Настройка на своём ПК
+
+Поручите её агенту: откройте Claude Desktop и вставьте первое сообщение из [docs/AGENT_SETUP.md](docs/AGENT_SETUP.md).
+Агент поставит всё в WSL и настроит режим 24/7. Вас он позовёт только для шагов с вашими аккаунтами — через
+мастер настройки в браузере, секреты в чат не попадают.
+`factory setup check` в любой момент покажет, что готово и что осталось.
+
+## Быстрый старт вручную
 
 ```bash
 sudo apt install ffmpeg espeak-ng fonts-dejavu-core      # Windows: WSL2 Ubuntu, см. docs/SETUP.md
@@ -50,7 +57,8 @@ factory run --dry-run                                           # тема из 
 factory run                                                     # по-настоящему (YouTube начинает с private)
 ```
 
-Автономный режим — systemd timer раз в 30 минут (`deploy/`), см. [docs/SETUP.md](docs/SETUP.md#автономный-режим).
+Автономный режим: на Windows — `scripts/windows/install-autostart.ps1`, на Linux — systemd timer (`deploy/`),
+см. [docs/SETUP.md](docs/SETUP.md#автономный-режим).
 
 ## Команды
 
@@ -65,12 +73,19 @@ factory run                                                     # по-наст�
 | `factory keys status\|probe\|import` | пул ключей: остатки квот, проверка, массовый импорт |
 | `factory publish [JOB]` / `factory feedback` | очередь публикаций / сбор удержания |
 | `factory daemon [--once]` | автономный тик: публикации, фидбэк, производство по плану, уборка |
-| `factory auth youtube` | разовое получение refresh token |
+| `factory setup check [--json] [--probe]` | что готово и что осталось — с категорией «агент / человек» и следующим шагом |
+| `factory setup wizard [--open]` | мастер настройки в браузере: ключи, OAuth YouTube, поиск канала Telegram, VK |
+| `factory setup verify [секция]` | живая проверка введённых секретов |
+| `factory env check` / `factory env set KEY` | секреты в `.env`: маскированный список / скрытый ввод |
+| `factory keys models` | актуальные имена моделей у провайдеров (чинить 404 конфигом) |
+| `factory auth youtube\|telegram\|telegram-local` | OAuth YouTube; найти канал Telegram; перевести бота на локальный Bot API |
 
 ## Документация
 
 - [docs/PLAN.md](docs/PLAN.md) — утверждённый план: архитектура, стек, бюджет, риски
-- [docs/SETUP.md](docs/SETUP.md) — установка и разовая настройка каждой площадки
+- [docs/AGENT_SETUP.md](docs/AGENT_SETUP.md) — runbook для агента, который доводит настройку на вашем ПК
+- [docs/SETUP.md](docs/SETUP.md) — установка и разовая настройка каждой площадки вручную
+- [docs/APP_REVIEW.md](docs/APP_REVIEW.md) — готовые тексты заявок TikTok и Meta
 - [docs/ENGAGEMENT.md](docs/ENGAGEMENT.md) — механики интересности и Voice Strategy
 - [docs/HARDWARE.md](docs/HARDWARE.md) — бюджет VRAM/ОЗУ/диска по стадиям, что менять при апгрейде
 - [docs/PLATFORMS.md](docs/PLATFORMS.md) — матрица площадок, лимиты, требования модерации
@@ -89,4 +104,5 @@ factory/qa/          8 проверок QA-гейта
 config/              factory.yaml, голоса, форматы, ниша
 prompts/             промты стадий
 deploy/              systemd, docker-compose (локальный Telegram Bot API, Postiz)
+scripts/             setup_wsl.sh (установка в WSL), windows/ (fz.ps1, режим 24/7)
 ```

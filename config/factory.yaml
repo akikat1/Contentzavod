@@ -245,8 +245,11 @@ qa:
 # ---------------------------------------------------------------------------
 publish:
   shorts_stagger_hours: 3
-  remote_storage:              # Cloudflare R2 (S3 API) — для площадок, которые тянут видео по URL
-    enabled: false
+  remote_storage:              # публичная ссылка для площадок, которые забирают видео по URL (Rutube, IG, FB)
+    mode: tunnel               # tunnel — Cloudflare quick tunnel, без аккаунта и карты | r2 — нужна карта | off
+    cloudflared: cloudflared
+    fetch_timeout_s: 1200      # сколько держать туннель, пока площадка скачивает файл
+    enabled: false             # (для mode: r2)
     endpoint_env: R2_ENDPOINT
     bucket: contentzavod
     access_key_env: R2_ACCESS_KEY_ID
@@ -327,7 +330,7 @@ alerts:
     enabled: false
     token_env: TG_BOT_TOKEN
     chat_id_env: TG_ADMIN_CHAT_ID
-    api_url: https://api.telegram.org
+    api_url: ""                # пусто — тот же сервер, что у публикации (после logOut облако бота не обслуживает)
 
 schedule:
   videos_per_day: 2

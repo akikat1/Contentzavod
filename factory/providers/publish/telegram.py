@@ -19,6 +19,8 @@ class TelegramPublisher(Publisher):
         size_mb = video.path.stat().st_size / 2**20
         if size_mb > limit_mb:
             raise PublishError(f"telegram: файл {size_mb:.0f} МБ больше лимита {limit_mb} МБ для {base}")
+        if limit_mb > 50:
+            self._wait_local(base, token)
         caption = f"<b>{_esc(meta.title)}</b>\n\n{_esc(meta.description)}"
         if meta.hashtags:
             caption += "\n\n" + " ".join(meta.hashtags)
@@ -47,6 +49,20 @@ class TelegramPublisher(Publisher):
         uname = chat_obj.get("username")
         url = f"https://t.me/{uname}/{msg['message_id']}" if uname else f"tg://chat/{chat}/{msg['message_id']}"
         return PostResult(url=url, platform_id=str(msg["message_id"]))
+
+
+    @staticmethod
+    def _wait_local(base: str, token: str, timeout_s: float = 60) -> None:
+        """Тик только что поднял WSL — контейнер Bot API может стартовать ещё несколько секунд."""
+        t0 = time.time()
+        while time.time() - t0 < timeout_s:
+            try:
+                if httpx.get(f"{base}/bot{token}/getMe", timeout=5).status_code == 200:
+                    return
+            except httpx.HTTPError:
+                pass
+            time.sleep(3)
+        raise Deferred("telegram: локальный Bot API не отвечает", time.time() + 600)
 
 
 def _esc(s: str) -> str:

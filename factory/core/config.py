@@ -138,6 +138,16 @@ def load_config(overrides: dict[str, Any] | None = None, config_dir: Path | None
     return Config(data, root=cdir.parent)
 
 
+def set_local(cfg: Config, dotted: str, value: Any) -> Path:
+    """Записать параметр в config/local.yaml (машинные переопределения, gitignored) и в живой конфиг."""
+    path = cfg.root / "config" / "local.yaml"
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else {}
+    _set_dotted(data := data or {}, dotted, value)
+    path.write_text(yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    cfg.set(dotted, value)
+    return path
+
+
 def load_yaml(path: Path) -> Any:
     with open(path, encoding="utf-8") as fh:
         return yaml.safe_load(fh)

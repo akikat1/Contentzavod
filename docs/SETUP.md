@@ -1,5 +1,13 @@
 # Установка и разовая настройка
 
+> **Проще всего — поручить настройку агенту.** Откройте Claude Desktop на своём ПК и вставьте первое сообщение из
+> [AGENT_SETUP.md](AGENT_SETUP.md#первое-сообщение-которое-пользователь-вставляет-в-claude-desktop): агент сам
+> поставит всё в WSL, проверит ключи, поднимет сервисы, настроит режим 24/7 и позовёт вас только для шагов
+> с вашими аккаунтами — через **мастер настройки** (`factory setup wizard`, страница в браузере; секреты
+> пишутся прямо в `.env` и в чат не попадают). Что осталось — всегда показывает `factory setup check`.
+>
+> Ниже — то же самое вручную.
+
 Всё, что здесь описано, делается **один раз**. Дальше завод работает сам: systemd timer каждые 30 минут
 запускает тик демона. Шаги, которые принципиально нельзя автоматизировать (OAuth, модерация приложений
 TikTok и Meta), помечены ✋.
@@ -10,10 +18,12 @@ TikTok и Meta), помечены ✋.
 ```bash
 sudo apt install ffmpeg espeak-ng fonts-dejavu-core python3.11 python3.11-venv git
 ```
-**Windows:** WSL2 с Ubuntu 24.04 (`wsl --install -d Ubuntu-24.04`), дальше как в Linux. Драйвер NVIDIA для
-Windows даёт CUDA внутри WSL2 — GTX 1650 поддерживается. Нативно под Windows тоже работает (GPU-мьютекс и
-монитор ресурсов переносимы), но systemd-таймер замените Планировщиком заданий: `factory daemon --once`
-каждые 30 минут.
+**Windows:** WSL2 с Ubuntu 24.04 (`wsl --install -d Ubuntu-24.04`). Всё системное ставит
+`scripts/setup_wsl.sh --root` (из Windows без пароля: `wsl -u root`), остальное — `scripts/setup_wsl.sh --gpu --piper`.
+Драйвер NVIDIA для Windows даёт CUDA внутри WSL2 — GTX 1650 поддерживается; аппаратный энкодер NVENC в WSL2
+обычно недоступен, поэтому видео кодирует CPU (libx264) — это штатно. Круглосуточный режим на Windows —
+`scripts/windows/install-autostart.ps1` (раздел «Автономный режим»), а не systemd-таймер: WSL выключается,
+когда закрыт последний терминал.
 
 ```bash
 git clone https://github.com/akikat1/Contentzavod && cd Contentzavod
@@ -92,7 +102,8 @@ Settings → App passwords → `BSKY_HANDLE`, `BSKY_APP_PASSWORD`. Почта а
 создайте приложение на dev.vk.com, получите токен через VK ID, `VK_TOKEN` и `VK_GROUP_ID` в `.env`.
 
 ### Rutube ✋
-Токен API из Rutube Studio → `RUTUBE_TOKEN`. Rutube забирает видео по ссылке, поэтому нужен буфер R2 (раздел 5).
+Токен API из Rutube Studio → `RUTUBE_TOKEN`. Rutube забирает видео по ссылке — завод сам поднимает временный
+туннель Cloudflare (раздел 5).
 
 ### TikTok ✋ (2–4 недели)
 developers.tiktok.com → приложение → продукт **Content Posting API** со scope `video.publish` → заявка на аудит
@@ -101,7 +112,8 @@ developers.tiktok.com → приложение → продукт **Content Post
 
 ### Instagram Reels и Facebook Reels ✋ (2–4 недели)
 Instagram Professional + страница Facebook + Meta Developer App → разрешение `instagram_business_content_publish`
-(и `pages_manage_posts` для Facebook) через App Review со скринкастом. Обе площадки забирают видео по ссылке → R2.
+(и `pages_manage_posts` для Facebook) через App Review со скринкастом — тексты заявок в [APP_REVIEW.md](APP_REVIEW.md).
+Обе площадки забирают видео по ссылке — через временный туннель (раздел 5).
 Лимит Instagram — 25 публикаций за 24 часа.
 
 ### X, LinkedIn, Pinterest, Threads, Reddit, Mastodon — через Postiz
@@ -114,12 +126,15 @@ id интеграций — в `publish.platforms.postiz.integrations`.
 ### Дзен
 Публичного API публикации видео нет. В MVP не реализован (см. [RISKS.md](RISKS.md)).
 
-## 5. Буфер Cloudflare R2 (для Rutube, Instagram, Facebook)
-dash.cloudflare.com → R2 → бакет `contentzavod` → включить публичный доступ (r2.dev) → API-токен S3.
-`.env`: `R2_ENDPOINT=https://<account>.r2.cloudflarestorage.com`, ключи; `config/local.yaml`:
-```yaml
-publish: {remote_storage: {enabled: true, public_base_url: "https://pub-xxxx.r2.dev"}}
-```
+## 5. Ссылка на видео для Rutube, Instagram, Facebook
+По умолчанию (`publish.remote_storage.mode: tunnel`) завод на время загрузки поднимает **Cloudflare quick tunnel**:
+локальный сервер отдаёт один файл по случайной ссылке `https://…trycloudflare.com/<токен>/…`, туннель закрывается,
+как только площадка скачала файл. Без аккаунта и без банковской карты; нужен только `cloudflared`
+(ставит `setup_wsl.sh --root`).
+
+Альтернатива — Cloudflare R2 (`mode: r2`): стабильнее, но для включения R2 Cloudflare требует привязать карту.
+dash.cloudflare.com → R2 → бакет → публичный доступ (r2.dev) → API-токен S3; в `.env` — `R2_ENDPOINT`, ключи;
+`config/local.yaml`: `publish: {remote_storage: {mode: r2, public_base_url: "https://pub-xxxx.r2.dev"}}`.
 
 ## 6. Первый настоящий прогон
 ```bash
@@ -130,6 +145,19 @@ factory run                      # YouTube private, остальные площ�
 ```
 
 ## Автономный режим
+
+**Windows + WSL (ваш случай):**
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-autostart.ps1
+```
+Скрипт отключает сон при питании от сети, прописывает `vmIdleTimeout=-1` в `.wslconfig`, создаёт задачи
+Планировщика «Contentzavod Tick» (при входе и каждые 30 минут), «KeepAlive» (держит WSL и Telegram Bot API) и
+«Lock» (блокирует экран сразу после входа) и открывает Sysinternals Autologon — вы вводите пароль Windows, чтобы
+после перезагрузки или обновления ПК вошёл сам. Откат — `uninstall-autostart.ps1`.
+Задачи «без входа в систему» не используются намеренно: они работают в изолированной сессии 0, где WSL
+запускается ненадёжно.
+
+**Чистый Linux:**
 ```bash
 mkdir -p ~/.config/systemd/user
 cp deploy/contentzavod.service deploy/contentzavod.timer ~/.config/systemd/user/
