@@ -1,0 +1,27 @@
+# Voice library (EN). Plenty of native en-US voices; multilingual voices from
+# other locales speak English with an accent — used for foreign characters.
+defaults:
+  main_narrator: nar_andrew
+  secondary_narrator_pool: [nar_ava, nar_brian]
+  quote_archive: quote_archive_m
+  quote_default: quote_plain_m
+
+voices:
+  - {id: nar_andrew, engine: edge, voice: en-US-AndrewNeural, roles: [main_narrator, secondary_narrator, character, quote], gender: male, timbre: warm_mid, native: true, base_f0_hz: 110, fallback: {piper: en_US-ryan-medium, espeak: "en-us+m3"}}
+  - {id: nar_ava, engine: edge, voice: en-US-AvaNeural, roles: [main_narrator, secondary_narrator, character, quote], gender: female, timbre: warm_mid, native: true, base_f0_hz: 200, fallback: {piper: en_US-amy-medium, espeak: "en-us+f3"}}
+  - {id: nar_brian, engine: edge, voice: en-US-BrianNeural, roles: [secondary_narrator, character, quote], gender: male, timbre: casual, native: true, base_f0_hz: 120, fallback: {espeak: "en-us+m4"}}
+  - {id: nar_emma, engine: edge, voice: en-US-EmmaNeural, roles: [secondary_narrator, character, quote], gender: female, timbre: bright, native: true, base_f0_hz: 215, fallback: {espeak: "en-us+f2"}}
+  - {id: char_guy, engine: edge, voice: en-US-GuyNeural, roles: [character, quote], gender: male, timbre: firm, native: true, base_f0_hz: 115, fallback: {espeak: "en-us+m1"}}
+  - {id: char_jenny, engine: edge, voice: en-US-JennyNeural, roles: [character, quote], gender: female, timbre: friendly, native: true, base_f0_hz: 210, fallback: {espeak: "en-us+f4"}}
+  - {id: char_christopher, engine: edge, voice: en-US-ChristopherNeural, roles: [character, quote], gender: male, timbre: deep, native: true, base_f0_hz: 100, fallback: {espeak: "en-us+m7"}}
+  - {id: char_michelle, engine: edge, voice: en-US-MichelleNeural, roles: [character, quote], gender: female, timbre: calm, native: true, base_f0_hz: 205, fallback: {espeak: "en-us+f5"}}
+  - {id: char_ryan_uk, engine: edge, voice: en-GB-RyanNeural, roles: [character, quote], gender: male, timbre: british, native: true, base_f0_hz: 115, fallback: {espeak: "en-gb+m3"}}
+  - {id: char_sonia_uk, engine: edge, voice: en-GB-SoniaNeural, roles: [character, quote], gender: female, timbre: british, native: true, base_f0_hz: 210, fallback: {espeak: "en-gb+f3"}}
+  - {id: char_remy, engine: edge, voice: fr-FR-RemyMultilingualNeural, roles: [character, quote], gender: male, timbre: soft, native: false, base_f0_hz: 118, fallback: {espeak: "en-us+m5"}}
+  - {id: char_vivienne, engine: edge, voice: fr-FR-VivienneMultilingualNeural, roles: [character, quote], gender: female, timbre: elegant, native: false, base_f0_hz: 210, fallback: {espeak: "en-us+f1"}}
+  - {id: char_florian, engine: edge, voice: de-DE-FlorianMultilingualNeural, roles: [character, quote], gender: male, timbre: firm, native: false, base_f0_hz: 112, fallback: {espeak: "en-us+m6"}}
+  - {id: char_seraphina, engine: edge, voice: de-DE-SeraphinaMultilingualNeural, roles: [character, quote], gender: female, timbre: calm, native: false, base_f0_hz: 205, fallback: {espeak: "en-us+f2"}}
+  - {id: quote_archive_m, derive_from: nar_andrew, roles: [quote], timbre: archive, prosody: {rate: "-8%", pitch: "-2st"}, fx_chain: radio_1940}
+  - {id: quote_archive_f, derive_from: nar_ava, roles: [quote], timbre: archive, prosody: {rate: "-6%", pitch: "-1st"}, fx_chain: radio_1940}
+  - {id: quote_plain_m, derive_from: nar_brian, roles: [quote], timbre: plain, prosody: {rate: "-4%"}, fx_chain: quote_room}
+  - {id: quote_plain_f, derive_from: nar_emma, roles: [quote], timbre: plain, prosody: {rate: "-3%"}, fx_chain: quote_room}

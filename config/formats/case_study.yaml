@@ -1,0 +1,15 @@
+id: case_study
+name: Кейс
+description: "Реальный случай: решение, последствия, урок."
+title_styles: [story, how]
+skeleton:
+  - {act: cold_open,  tension: 0.9,  register: parallax, cue: impact, note: "момент решения"}
+  - {act: promise,    tension: 0.5,  register: text,               note: "открыть петлю: сработало ли"}
+  - {act: context,    tension: 0.35, register: stock,              note: "ситуация до"}
+  - {act: rising,     tension: 0.6,  register: image,              note: "решение, реплики участников"}
+  - {act: twist,      tension: 0.85, register: counter, cue: impact, note: "неожиданный результат в цифрах"}
+  - {act: rising,     tension: 0.5,  register: diagram,            note: "спад: почему так вышло"}
+  - {act: climax,     tension: 0.95, register: parallax, cue: silence_before, note: "урок — закрыть петлю"}
+  - {act: finale,     tension: 0.55, register: text,               note: "callback"}
+guidance: |
+  Участники кейса говорят сами (character). Цифры до и после — счётчиками.

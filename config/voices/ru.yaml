@@ -1,0 +1,93 @@
+# Библиотека голосов (RU). edge-tts: 2 родных русских голоса + мультиязычные,
+# которые говорят по-русски с лёгким акцентом. Акцент используется осознанно:
+# иностранный эксперт, зарубежная пресса. Родные голоса — только под нарратора.
+#
+# derive_from — вариант голоса: та же модель, другая просодия/обработка.
+# Сдвиг pitch −2st + rate −6% воспринимается как другой человек.
+# fallback — голоса офлайн-движков, если edge-tts недоступен.
+
+defaults:
+  main_narrator: nar_dmitry
+  secondary_narrator_pool: [nar_svetlana, nar_dmitry_deep]
+  quote_archive: quote_archive_m
+  quote_default: quote_plain_m
+
+voices:
+  - id: nar_dmitry
+    engine: edge
+    voice: ru-RU-DmitryNeural
+    roles: [main_narrator, secondary_narrator, character, quote]
+    gender: male
+    timbre: warm_low
+    native: true
+    base_f0_hz: 115
+    fallback: {piper: ru_RU-dmitri-medium, espeak: "ru+m3"}
+
+  - id: nar_svetlana
+    engine: edge
+    voice: ru-RU-SvetlanaNeural
+    roles: [main_narrator, secondary_narrator, character, quote]
+    gender: female
+    timbre: bright_mid
+    native: true
+    base_f0_hz: 205
+    fallback: {piper: ru_RU-irina-medium, espeak: "ru+f3"}
+
+  - id: nar_dmitry_deep
+    derive_from: nar_dmitry
+    roles: [secondary_narrator, character]
+    timbre: deep_slow
+    prosody: {rate: "-6%", pitch: "-2st"}
+    fallback: {piper: ru_RU-denis-medium, espeak: "ru+m1"}
+
+  - id: char_svetlana_young
+    derive_from: nar_svetlana
+    roles: [character]
+    timbre: young_fast
+    prosody: {rate: "+5%", pitch: "+2st"}
+    fallback: {espeak: "ru+f4"}
+
+  - id: char_dmitry_old
+    derive_from: nar_dmitry
+    roles: [character]
+    timbre: old_rough
+    prosody: {rate: "-9%", pitch: "-3st"}
+    fx_chain: aged
+    fallback: {piper: ru_RU-ruslan-medium, espeak: "ru+m7"}
+
+  # --- мультиязычные: говорят по-русски с акцентом → иностранцы ---
+  - {id: char_andrew,    engine: edge, voice: en-US-AndrewMultilingualNeural,    roles: [character, quote], gender: male,   timbre: neutral_mid, native: false, base_f0_hz: 110, fallback: {espeak: "ru+m2"}}
+  - {id: char_brian,     engine: edge, voice: en-US-BrianMultilingualNeural,     roles: [character, quote], gender: male,   timbre: casual_mid,  native: false, base_f0_hz: 120, fallback: {espeak: "ru+m4"}}
+  - {id: char_ava,       engine: edge, voice: en-US-AvaMultilingualNeural,       roles: [character, quote], gender: female, timbre: warm_mid,    native: false, base_f0_hz: 200, fallback: {espeak: "ru+f2"}}
+  - {id: char_emma,      engine: edge, voice: en-US-EmmaMultilingualNeural,      roles: [character, quote], gender: female, timbre: bright,      native: false, base_f0_hz: 215, fallback: {espeak: "ru+f1"}}
+  - {id: char_remy,      engine: edge, voice: fr-FR-RemyMultilingualNeural,      roles: [character, quote], gender: male,   timbre: soft,        native: false, base_f0_hz: 118, fallback: {espeak: "ru+m5"}}
+  - {id: char_vivienne,  engine: edge, voice: fr-FR-VivienneMultilingualNeural,  roles: [character, quote], gender: female, timbre: elegant,     native: false, base_f0_hz: 210, fallback: {espeak: "ru+f5"}}
+  - {id: char_florian,   engine: edge, voice: de-DE-FlorianMultilingualNeural,   roles: [character, quote], gender: male,   timbre: firm,        native: false, base_f0_hz: 112, fallback: {espeak: "ru+m6"}}
+  - {id: char_seraphina, engine: edge, voice: de-DE-SeraphinaMultilingualNeural, roles: [character, quote], gender: female, timbre: calm,        native: false, base_f0_hz: 205, fallback: {espeak: "ru+f3"}}
+  - {id: char_giuseppe,  engine: edge, voice: it-IT-GiuseppeMultilingualNeural,  roles: [character, quote], gender: male,   timbre: lively,      native: false, base_f0_hz: 125, fallback: {espeak: "ru+m2"}}
+
+  # --- цитаты ---
+  - id: quote_archive_m
+    derive_from: nar_dmitry
+    roles: [quote]
+    timbre: archive
+    prosody: {rate: "-8%", pitch: "-2st"}
+    fx_chain: radio_1940
+  - id: quote_archive_f
+    derive_from: nar_svetlana
+    roles: [quote]
+    timbre: archive
+    prosody: {rate: "-6%", pitch: "-1st"}
+    fx_chain: radio_1940
+  - id: quote_plain_m
+    derive_from: nar_dmitry
+    roles: [quote]
+    timbre: plain
+    prosody: {rate: "-4%", pitch: "-1st"}
+    fx_chain: quote_room
+  - id: quote_plain_f
+    derive_from: nar_svetlana
+    roles: [quote]
+    timbre: plain
+    prosody: {rate: "-3%"}
+    fx_chain: quote_room

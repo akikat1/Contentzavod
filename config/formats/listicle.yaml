@@ -1,0 +1,16 @@
+id: listicle
+name: Топ-лист
+description: "N пунктов по нарастающей, лучший — последним."
+title_styles: [number, statement]
+skeleton:
+  - {act: cold_open, tension: 0.85, register: parallax, cue: impact, note: "самый дикий пункт — тизером, без раскрытия"}
+  - {act: promise,   tension: 0.5,  register: text,               note: "открыть петлю: пункт №1 будет в конце"}
+  - {act: list_item, tension: 0.45, register: stock,              note: "пункт 5"}
+  - {act: list_item, tension: 0.55, register: counter,            note: "пункт 4 — с числом"}
+  - {act: list_item, tension: 0.4,  register: image,              note: "пункт 3 — спад, лёгкий"}
+  - {act: list_item, tension: 0.7,  register: diagram,            note: "пункт 2"}
+  - {act: climax,    tension: 1.0,  register: parallax, cue: silence_before, note: "пункт 1 — закрыть петлю"}
+  - {act: finale,    tension: 0.55, register: text,               note: "callback + вопрос зрителю"}
+guidance: |
+  Пункты по нарастанию интереса, но со спадом в середине. У каждого пункта —
+  конкретный факт или число, а не общие слова.

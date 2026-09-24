@@ -1,0 +1,17 @@
+id: explainer
+name: Объяснение
+description: "Разобрать одно явление так, чтобы зритель понял механизм, а не запомнил определения."
+title_styles: [how, question]
+skeleton:
+  - {act: cold_open,   tension: 0.85, register: parallax, cue: impact,  note: "парадокс или неожиданный факт, без представления"}
+  - {act: promise,     tension: 0.5,  register: text,               note: "открыть петлю: какой вопрос закроем в конце"}
+  - {act: context,     tension: 0.35, register: stock,              note: "минимум контекста, только то, без чего дальше непонятно"}
+  - {act: explanation, tension: 0.5,  register: diagram,            note: "механизм, шаг 1"}
+  - {act: explanation, tension: 0.65, register: image,              note: "механизм, шаг 2 — через конкретный пример"}
+  - {act: twist,       tension: 0.8,  register: counter, cue: impact, note: "число или факт, который ломает интуицию"}
+  - {act: explanation, tension: 0.45, register: stock,              note: "спад: что из этого следует в жизни"}
+  - {act: climax,      tension: 0.95, register: parallax, cue: silence_before, note: "ответ на вопрос из promise"}
+  - {act: finale,      tension: 0.6,  register: text,               note: "callback к образу из cold open + вопрос зрителю"}
+guidance: |
+  Одна идея на ролик. Каждый шаг механизма — через конкретный пример с числами.
+  Абстракции переводить в бытовые сравнения.

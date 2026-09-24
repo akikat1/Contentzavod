@@ -1,0 +1,8 @@
+# Скопируйте в config/keys.yaml (он в .gitignore) и заполните.
+# Можно `key: "..."` прямо здесь или `key_env: ИМЯ_ПЕРЕМЕННОЙ`.
+# Массовый импорт: factory keys import --provider groq --file groq_keys.txt
+keys:
+  - {provider: gemini,     account: acc01, key_env: GEMINI_ACC01}
+  - {provider: groq,       account: acc01, key_env: GROQ_ACC01}
+  - {provider: openrouter, account: acc01, key_env: OPENROUTER_ACC01}
+  # ... до acc15 × 3 провайдера

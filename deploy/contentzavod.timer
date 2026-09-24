@@ -1,0 +1,10 @@
+[Unit]
+Description=Contentzavod — запуск каждые 30 минут
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

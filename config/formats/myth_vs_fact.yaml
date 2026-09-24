@@ -1,0 +1,16 @@
+id: myth_vs_fact
+name: Миф против факта
+description: "Оппонент озвучивает миф, нарратор разбирает его фактами."
+title_styles: [contrarian, question]
+skeleton:
+  - {act: cold_open, tension: 0.85, register: parallax, cue: impact, note: "самый живучий миф звучит как правда"}
+  - {act: promise,   tension: 0.5,  register: text,               note: "открыть петлю: почему в это верят"}
+  - {act: myth,      tension: 0.45, register: stock,              note: "миф 1 — голосом оппонента"}
+  - {act: debunk,    tension: 0.65, register: counter,            note: "факты против мифа 1"}
+  - {act: myth,      tension: 0.4,  register: image,              note: "миф 2 — оппонент"}
+  - {act: debunk,    tension: 0.8,  register: diagram, cue: impact, note: "разбор мифа 2"}
+  - {act: climax,    tension: 0.95, register: parallax, cue: silence_before, note: "почему мифы живучи — закрыть петлю"}
+  - {act: finale,    tension: 0.55, register: text,               note: "callback"}
+guidance: |
+  Миф формулирует secondary_narrator (оппонент) убедительно, без карикатуры.
+  Разбор — main_narrator, только с источниками.
